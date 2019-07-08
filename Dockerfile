@@ -23,7 +23,8 @@ RUN yum install -y \
     man \
     git \
     gzip \
-    tar
+    tar \
+    jq
 
 RUN wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python
 
@@ -84,6 +85,12 @@ RUN gem install mailcatcher
 # nginx
 ENV NGINX_VERSION 1.12
 RUN amazon-linux-extras install -y nginx${NGINX_VERSION}
+
+# aws-cli
+RUN curl -O https://bootstrap.pypa.io/get-pip.py \
+  && python get-pip.py \
+  && rm -f get-pip.py \
+  && pip install awscli --upgrade
 
 # clean
 RUN yum groupremove -y "Development Tools"

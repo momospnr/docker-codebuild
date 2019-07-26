@@ -9,22 +9,22 @@ RUN yum update -y
 RUN yum install -y yum-plugin-security
 RUN yum update --security
 RUN yum install -y \
-    sudo \
-    shadow-utils \
-    procps \
-    wget \
-    openssh-server \
-    openssh-clients \
-    glibc-langpack-ja \
-    which \
-    net-tools \
-    mlocate \
-    systat \
-    man \
-    git \
-    gzip \
-    tar \
-    jq
+  sudo \
+  shadow-utils \
+  procps \
+  wget \
+  openssh-server \
+  openssh-clients \
+  glibc-langpack-ja \
+  which \
+  net-tools \
+  mlocate \
+  systat \
+  man \
+  git \
+  gzip \
+  tar \
+  jq
 
 RUN wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python
 
@@ -57,11 +57,11 @@ RUN yum install -y \
   php-pecl-apcu-devel \
   php-pecl-redis \
   mariadb-devel
+RUN cat /etc/php.d/40-apcu.ini|(rm /etc/php.d/40-apcu.ini;sed -e s/\;apc.enable_cli=0/apc.enable_cli=1/g > /etc/php.d/40-apcu.ini)
 
 # Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin \
   && mv /usr/bin/composer.phar /usr/bin/composer
-
 
 # Node
 RUN curl -sL https://rpm.nodesource.com/setup_10.x | bash - \
@@ -72,8 +72,8 @@ RUN curl -sL https://rpm.nodesource.com/setup_10.x | bash - \
 # Dockerize
 ENV DOCKERIZE_VERSION v0.6.1
 RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && tar -C /usr/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+  && tar -C /usr/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+  && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 # mailcatcher
 RUN yum groupinstall -y "Development Tools"

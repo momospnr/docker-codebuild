@@ -2,13 +2,7 @@ FROM amazonlinux:2.0.20190508
 
 LABEL maintainer="momospnr"
 
-RUN set -ex
-
-# initial setup
-RUN yum update -y 
-RUN yum install -y yum-plugin-security
-RUN yum update --security
-RUN yum install -y \
+ENV APP_DEPS \
   sudo \
   shadow-utils \
   procps \
@@ -26,23 +20,7 @@ RUN yum install -y \
   tar \
   jq
 
-RUN wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python
-
-RUN useradd ec2-user
-RUN echo "ec2-user ALL=NOPASSWD: ALL" >> /etc/sudoers
-
-ENV LANG ja_JP.utf8
-ENV LC_ALL ja_JP.utf8
-
-RUN unlink /etc/localtime \
-  && ln -s /usr/share/zoneinfo/Japan /etc/localtime
-
-# install packages
-
-## PHP
-ENV PHP_VERSION 7.2
-RUN amazon-linux-extras install -y php$PHP_VERSION
-RUN yum install -y \
+ENV PHP_DEPS \
   php-mbstring \
   php-xmlrpc \
   php-pecl-memcached \
@@ -54,47 +32,67 @@ RUN yum install -y \
   php-pecl-zip \
   php-devel \
   php-intl \
+  php-pecl-redis
+
+ENV BUILD_DEPS \
   php-pecl-apcu-devel \
-  php-pecl-redis \
-  mariadb-devel
-RUN cat /etc/php.d/40-apcu.ini|(rm /etc/php.d/40-apcu.ini;sed -e s/\;apc.enable_cli=0/apc.enable_cli=1/g > /etc/php.d/40-apcu.ini)
-
-# Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin \
-  && mv /usr/bin/composer.phar /usr/bin/composer
-
-# Node
-RUN curl -sL https://rpm.nodesource.com/setup_10.x | bash - \
-  && yum install -y nodejs \
-  && curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo \
-  && yum install -y yarn
-
-# Dockerize
-ENV DOCKERIZE_VERSION v0.6.1
-RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-  && tar -C /usr/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-  && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-
-# mailcatcher
-RUN yum groupinstall -y "Development Tools"
-RUN yum install -y \
+  mariadb-devel \
   ruby-devel \
   sqlite-devel
-RUN gem install mailcatcher
 
-# nginx
+ENV PHP_VERSION 7.2
 ENV NGINX_VERSION 1.12
-RUN amazon-linux-extras install -y nginx${NGINX_VERSION}
+ENV DOCKERIZE_VERSION v0.6.1
 
-# aws-cli
-RUN curl -O https://bootstrap.pypa.io/get-pip.py \
+# setup
+RUN set -ex \
+  && yum update -y \
+  && yum install -y yum-plugin-security \
+  && yum update --security \
+  && yum install -y \
+    ${APP_DEPS} \
+    ${BUILD_DEPS} \
+  && wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python \
+  && useradd ec2-user \
+  && echo "ec2-user ALL=NOPASSWD: ALL" >> /etc/sudoers \
+  && unlink /etc/localtime \
+  && ln -s /usr/share/zoneinfo/Japan /etc/localtime \
+# install packages
+  ## PHP
+  && amazon-linux-extras install -y php$PHP_VERSION \
+  && yum install -y \
+  ${PHP_DEPS} \
+  && cat /etc/php.d/40-apcu.ini|(rm /etc/php.d/40-apcu.ini;sed -e s/\;apc.enable_cli=0/apc.enable_cli=1/g > /etc/php.d/40-apcu.ini) \
+  ## Composer
+  && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin \
+  && mv /usr/bin/composer.phar /usr/bin/composer \
+  ## Node
+  && curl -sL https://rpm.nodesource.com/setup_10.x | bash - \
+  && yum install -y nodejs \
+  && curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo \
+  && yum install -y yarn \
+  ## Dockerize
+  && wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+  && tar -C /usr/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+  && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+  ## nginx
+  && amazon-linux-extras install -y nginx${NGINX_VERSION} \
+  ## aws-cli
+  && curl -O https://bootstrap.pypa.io/get-pip.py \
   && python get-pip.py \
   && rm -f get-pip.py \
-  && pip install awscli --upgrade
-
+  && pip install awscli --upgrade \
+  ## mailcatcher
+  && yum groupinstall -y "Development Tools" \
+  && gem install mailcatcher \
 # clean
-RUN yum groupremove -y "Development Tools"
-RUN yum clean all
+  && yum groupremove -y "Development Tools" \
+  && yum remove -y ${BUILD_DEPS} \
+  && yum clean all \
+  && rm -rf /var/cache/yum
+
+ENV LANG ja_JP.utf8
+ENV LC_ALL ja_JP.utf8
 
 COPY php.ini-development /etc/php.ini
 
